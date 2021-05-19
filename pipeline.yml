@@ -1,0 +1,51 @@
+---
+resources:
+  - name: git-resource
+    type: git
+    source:
+      uri: https://github.com/bipin1086/mkdocs-ci.git
+      branch: main
+
+  - name: docker-hub
+    type: docker-image
+    source:
+      email: ((docker-hub-email))
+      username: ((docker-hub-username))
+      password: ((docker-hub-password))
+      repository: ((docker-hub-username))/mkdocs-ci-image
+
+  - name: version
+    type: semver
+    source:
+      initial_version: "0.0.0"
+      driver: git
+      uri: https://github.com/bipin1086/mkdocs-ci.git
+      branch: main
+      file: version.txt
+      git_user: ((git-user))
+      password: ((git-key))
+
+jobs:
+  - name: publish
+    public: true 
+    plan:
+      - get: git-resource
+      - get: version
+        params: {bump: minor}
+      - put: docker-hub
+        params:
+          build: git-resource
+          tag_as_latest: true
+          tag: version
+      - put: version
+        params: {file: version/version}
+      - task: run
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source: {repository: ((docker-hub-username))/mkdocs-ci-image}
+          run:
+            path: mkdocs
+            args: ["--version"]
+              
